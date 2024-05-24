@@ -34,7 +34,6 @@ def purge_data():
     data_file = "admin.json"
 
     try:
-        # os.remove(data_file)
         with open("admin.json", "r") as jsonFile:
             data = json.load(jsonFile)
             i = 0
@@ -44,7 +43,39 @@ def purge_data():
         with open("admin.json", "w") as jsonFile:
             json.dump(data, jsonFile, indent=4)
                 
-        print("All data has been purged successfully.")
+        print("All data has been purged from admin file successfully.")
+    except FileNotFoundError:
+        print(f"Error: '{data_file}' not found.")
+        
+    data_file = "projects.json"
+
+    try:
+        with open("projects.json", "r") as jsonFile:
+            data = json.load(jsonFile)
+            i = 0
+            while len(data):
+                data.pop(i)
+                
+        with open("projects.json", "w") as jsonFile:
+            json.dump(data, jsonFile, indent=4)
+                
+        print("All data has been purged from projects file successfully.")
+    except FileNotFoundError:
+        print(f"Error: '{data_file}' not found.")
+        
+    data_file = "users.json"
+
+    try:
+        with open("users.json", "r") as jsonFile:
+            data = json.load(jsonFile)
+            i = 0
+            while len(data):
+                data.pop(i)
+                
+        with open("users.json", "w") as jsonFile:
+            json.dump(data, jsonFile, indent=4)
+                
+        print("All data has been purged from users file successfully.")
     except FileNotFoundError:
         print(f"Error: '{data_file}' not found.")
 
