@@ -6,11 +6,32 @@ import re
 import uuid
 import datetime
 from enum import Enum
+import bcrypt
+
 
 console = console.Console()
 
 
 class model:
+    def __init__(self):
+        self.id = uuid.uuid4()
+
+
+def hash_password(password):
+    salt = bcrypt.gensalt()
+    hashed_password = bcrypt.hashpw(password.encode("utf-8"), salt)
+    return hashed_password
+
+
+def verify_password(password, hashed_password):
+    return bcrypt.checkpw(password.encode("utf-8"), hashed_password)
+
+
+class Account(model):
+    def __init__(self):
+        self.id = model()
+        self.user_name = ""
+
     def __init__(self):
         self.id = uuid.uuid4()
 
@@ -30,6 +51,9 @@ class Account(model):
     def register(self, user_name, password, email):
         self.user_info["gmail"] = email
         self.user_info["Username"] = user_name
+
+        self.user_info["Hash_password_str"] = hash_password(password).decode('utf8')
+        # self.Hash_password = hash_password(password)
         self.user_info["Password"] = password
         self.user_info["Is_active"] = False if not self.active_user_account else True
         self.user_info["Regular_member"] = self.regular_member_projects
@@ -74,6 +98,9 @@ class Account(model):
                     console.print("The user account has been closed by the system administrator."
                                   " You are not allowed to access the account!\n", style="bold red")
                     return False
+
+                # if hash_password(password) == item.get("Hash_password"):
+                if verify_password(password, item.get("Hash_password_str").encode('utf8')):
                 if password == item.get("Password"):
                     console.print(f"\nWelcome {user_name}",
                                   style="bold green")
@@ -162,11 +189,14 @@ class CreateProject(model):
         self.title = title
         self.members = []
         self.project_details["Project_ID"] = str(self.id)
+        self.tasks = []
+
 
     def save_information(self, leader_id):
         self.project_details["Leader_ID"] = leader_id
         self.project_details["Title"] = self.title
         self.project_details["Members"] = self.members
+        self.project_details["Tasks"] = self.tasks
         self.data = json.load(open("projects.json", "r"))
         self.data.append(self.project_details)
         with open("projects.json", "w") as f:
@@ -301,10 +331,90 @@ def account_page():
     table.add_row("[yellow]4[/yellow]", "[magenta]delete project[/magenta]")
     table.add_row("[yellow]5[/yellow]", "[magenta]List of projects in which you are the leader[/magenta]")
     table.add_row("[yellow]6[/yellow]", "[magenta]List of projects in which you are a regular member[/magenta]")
+    table.add_row("[yellow]7[/yellow]", "[magenta]Task[/magenta]")
     table.add_row("[yellow]0[/yellow]", "[red]Logout[/red]")
     console.print(table)
 
 
+def task_page():
+    table = Table(title="Task Page")
+    table.add_column("Option", style="blue", justify="center")
+    table.add_column("Description")
+    table.add_row("[yellow]1[/yellow]", "[blue]Task Definition[/blue]")
+    table.add_row("[yellow]2[/yellow]", "[blue]Task Delete[/blue]")
+    table.add_row("[yellow]3[/yellow]", "[blue]Task Allocation[/blue]")
+    table.add_row("[yellow]4[/yellow]", "[blue]Task Field Definition[/blue]")
+    table.add_row("[yellow]0[/yellow]", "[red]Back To Account Page[/red]")
+    console.print(table)
+
+
+def passing():
+    console.print("Enter any key to continue..", style="black")
+    passing = input()
+
+
+def task_definition(username):
+    is_exist_project = False
+    console.print("Enter title of your project", style="yellow")
+    title = input()
+    info_projects = json.load(open("projects.json", "r"))
+    info_users = json.load(open("users.json", "r"))
+
+    for item in info_projects:
+        if title == item.get("Title"):
+            if item.get("Leader_ID") == next(
+                    (item.get("ID") for item in info_users if username == item.get("Username")), None):
+                is_exist_project = True
+
+    if is_exist_project:
+        console.print("Please enter the name of the task you want to define", style="yellow")
+        add_task = str(input())
+        for i in range(len(info_projects)):
+            if info_projects[i].get("Title") == title:
+                info_projects[i].get("Tasks").append(add_task)
+                console.print(f"{add_task} task defined in {title} project", style="green")
+                with open("projects.json", "w") as f:
+                    json.dump(info_projects, f, indent=4)
+                passing()
+                break
+    else:
+        console.print("This project is not valid!\nOr you are not the leader of this project!", style="bold red")
+        passing()
+
+
+def task_delete(username):
+    is_exist_project = False
+    console.print("Enter title of your project", style="yellow")
+    title = input()
+    info_projects = json.load(open("projects.json", "r"))
+    info_users = json.load(open("users.json", "r"))
+
+    for item in info_projects:
+        if title == item.get("Title"):
+            if item.get("Leader_ID") == next(
+                    (item.get("ID") for item in info_users if username == item.get("Username")), None):
+                is_exist_project = True
+
+    if is_exist_project:
+        console.print("Please enter the name of the task you want to delete", style="yellow")
+        delete_task = str(input())
+        for i in range(len(info_projects)):
+            if info_projects[i].get("Title") == title:
+                if delete_task in info_projects[i].get("Tasks"):
+                    info_projects[i].get("Tasks").remove(delete_task)
+                    console.print(f"{delete_task} task delete from {title} project", style="green")
+                    with open("projects.json", "w") as f:
+                        json.dump(info_projects, f, indent=4)
+                    passing()
+                    break
+                else:
+                    console.print("Enterd task is not valid!", style="bold red")
+                    passing()
+    else:
+        console.print("This project is not valid!\nOr you are not the leader of this project!", style="bold red")
+        passing()
+
+        
 def menu():
     while True:
         create_main_menu()
@@ -385,6 +495,27 @@ def menu():
                                 console.print("Nothing found!", style="black")
                                 break
 
+                elif choice == '7':
+                    while True:
+                        os.system('cls' if os.name == 'nt' else 'clear')
+                        task_page()
+                        console.print("Enter your select...", style="bold yellow")
+                        choice = input()
+                        # os.system('cls' if os.name == 'nt' else 'clear')
+
+                        if choice == '1':
+                            task_definition(username)
+
+                        elif choice == '2':
+                            task_delete(username)
+
+                        elif choice == '0':
+                            os.system('cls' if os.name == 'nt' else 'clear')
+                            break
+                        else:
+                            console.print("Invalid choice.Please try again.", style="bold red")
+                            passing()
+                            continue
                 elif choice == '0':
                     break
                 else:
