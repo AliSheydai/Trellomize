@@ -1,0 +1,24 @@
+[
+    {
+        "Project_ID": "<__main__.model object at 0x0000026AF05360C0>",
+        "Leader_ID": "<__main__.model object at 0x0000019D4353D9A0>",
+        "Title": "Trello",
+        "Members": [],
+        "Tasks": [
+            "manager"
+        ]
+    },
+    {
+        "Project_ID": "<__main__.model object at 0x0000026AF0561EB0>",
+        "Leader_ID": "<__main__.model object at 0x0000026AF04F3710>",
+        "Title": "Abbas khafan",
+        "Members": [
+            "Amin",
+            "Hamid",
+            "Hossein"
+        ],
+        "Tasks": [
+            "Amin zebel"
+        ]
+    }
+]

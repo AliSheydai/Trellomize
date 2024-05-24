@@ -28,13 +28,22 @@ def purge_data():
     response = input("Are you sure you want to purge all data? This action cannot be undone. (yes/no): ")
 
     if response.lower() != "yes":
-        print("Data purge aborted.")
+        print("Data purge canceled.")
         return
 
-    data_file = "manager.json"
+    data_file = "admin.json"
 
     try:
-        os.remove(data_file)
+        # os.remove(data_file)
+        with open("admin.json", "r") as jsonFile:
+            data = json.load(jsonFile)
+            i = 0
+            while len(data):
+                data.pop(i)
+                
+        with open("admin.json", "w") as jsonFile:
+            json.dump(data, jsonFile, indent=4)
+                
         print("All data has been purged successfully.")
     except FileNotFoundError:
         print(f"Error: '{data_file}' not found.")
@@ -42,6 +51,8 @@ def purge_data():
 
 def main():
     parser = argparse.ArgumentParser(description="Create system administrator information")
+    # print(parser)
+    # exit(0)
     parser.add_argument("command", help="Command to execute")
     parser.add_argument("--username", help="Admin username")
     parser.add_argument("--password", help="Admin password")

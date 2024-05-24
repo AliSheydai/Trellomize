@@ -101,12 +101,12 @@ class Account(model):
 
                 # if hash_password(password) == item.get("Hash_password"):
                 if verify_password(password, item.get("Hash_password_str").encode('utf8')):
-                if password == item.get("Password"):
+                 if password == item.get("Password"):
                     console.print(f"\nWelcome {user_name}",
                                   style="bold green")
                     self.logged_in = True
                     return True
-                else:
+                 else:
                     console.print("You have entered the wrong password!\n", style="bold red")
                     return False
 
