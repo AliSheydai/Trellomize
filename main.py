@@ -273,6 +273,103 @@ class CreateTask(Model):
     
     # def get_assignees(self):
     #     return self.ponter.contents.value
+    def task_allocation(self, username):
+        is_exist_project = False
+        tasks = []
+        members = []
+        console.print("Enter title of your project", style="yellow")
+        title = input()
+        info_projects = json.load(open ("projects.json", "r"))
+        info_users = json.load(open ("users.json", "r"))
+        
+        for item in info_projects:
+            if title == item.get("Title"):
+                if item.get("Leader_ID") == next((item.get("ID") for item in info_users if username == item.get("Username")), None):
+                    tasks = item.get("Tasks")
+                    members = item.get("Members")
+                    is_exist_project = True
+                    break
+                    
+        if is_exist_project:
+            console.print(f"Tasks: {tasks}")   
+            console.print("Please enter the name of the task you want to allocation", style= "yellow")
+            allocation_task = str(input())
+            if allocation_task in tasks:
+                console.print(f"Members: {members}") 
+                console.print("Enter the name of the person you want to assign the task", style="yellow")
+                user_alloc = str(input())
+                if user_alloc in members:
+                    self.assignees.append(user_alloc)
+                else:
+                    console.print("User is not valid!", style="bold red")
+            else: 
+                console.print(f"{allocation_task} task is not valid!", style="bold red")
+
+    # def task_definition(self, username, user_obj):
+    #     is_exist_project = False
+    #     console.print("Enter title of your project", style="yellow")
+    #     title = str(input())
+    #     info_projects = json.load(open ("projects.json", "r"))
+    #     info_users = json.load(open ("users.json", "r"))
+        
+    #     for item in info_projects:
+    #         if title == item.get("Title"):
+    #             if item.get("Leader_ID") == next((item.get("ID") for item in info_users if username == item.get("Username")), None):
+    #                 is_exist_project = True
+                    
+    #     if is_exist_project:
+    #         console.print("Please enter the title of the task you want to define", style= "yellow")
+    #         add_task_title = str(input())
+    #         self.title = add_task_title
+    #         console.print("Please enter the description of the task", style= "yellow")
+    #         add_task_description = str(input())
+    #         self.description = add_task_description
+    #         for i in range(len(info_projects)):
+    #             if info_projects[i].get("Title") == title:
+    #                 info_projects[i].get("Tasks").append(add_task_title)
+    #                 console.print(f"{add_task_title} task defined in {title} project", style="green")
+                    
+    #                 # task = CreateTask(add_task_title, add_task_description)
+    #                 for project in user_obj.projects:
+    #                     if project.title == title:
+    #                         project.add_task(self)
+    #                         leader_id = next((item.get("ID") for item in info_users if username == item.get("Username")), None)
+    #                         project.save_information(leader_id)
+    #                 # with open("projects.json", "w") as f:
+    #                 #     json.dump(info_projects, f, indent=4)
+    #                 passing()
+    #                 break
+    # def delete_task_allocation(self, username):
+    #     is_exist_project = False
+    #     tasks = []
+    #     members = []
+    #     console.print("Enter title of your project", style="yellow")
+    #     title = input()
+    #     info_projects = json.load(open ("projects.json", "r"))
+    #     info_users = json.load(open ("users.json", "r"))
+        
+    #     for item in info_projects:
+    #         if title == item.get("Title"):
+    #             if item.get("Leader_ID") == next((item.get("ID") for item in info_users if username == item.get("Username")), None):
+    #                 tasks = item.get("Tasks")
+    #                 members = item.get("Members")
+    #                 is_exist_project = True
+    #                 break
+                    
+    #     if is_exist_project:
+    #         console.print(f"Tasks: {tasks}")   
+    #         console.print("Please enter the name of the task you want to delete allocation", style= "yellow")
+    #         delete_allocation_task = str(input())
+    #         if delete_allocation_task in tasks:
+    #             console.print(f"Members: {members}") 
+    #             console.print("Enter the name of the person you want to picking up the task", style="yellow")
+    #             user_delete = str(input())
+    #             if user_delete in members:
+    #                 self.assignees.append(user_delete)
+    #             else:
+    #                 console.print("User is not valid!", style="bold red")
+    #         else: 
+    #             console.print(f"{delete_allocation_task} task is not valid!", style="bold red")
 
 
 def delete_project(username):
@@ -352,6 +449,7 @@ def delete_user_project(username):
                 
     if is_exist_project:
         console.print("Please enter the username you want to delete from the project", style= "yellow")
+        console.print("Please enter the username you want to add to the project", style= "yellow")
         delete_user_name = str(input())
         info_users = json.load(open ("users.json", "r"))
         for i in range(len(info_projects)):
@@ -467,6 +565,9 @@ def task_delete(username):
                 for j in range(len(info_projects[i].get("Tasks Data"))):
                     if info_projects[i].get("Tasks Data")[j]["Title"] == delete_task:
                         del info_projects[i].get("Tasks Data")[j]
+                    for j in range(len(info_projects[i].get("Tasks Data"))):
+                        if info_projects[i].get("Tasks Data")[j]["Title"] == delete_task:
+                            del info_projects[i].get("Tasks Data")[j]
                     with open("projects.json", "w") as f:
                         json.dump(info_projects, f, indent=4)
                     passing()
@@ -587,6 +688,8 @@ def delete_task_allocation(username):
 
 def menu():
     task_pointer = None
+
+def menu():
     model = Model()
     while True:
         create_main_menu()
@@ -712,6 +815,7 @@ def menu():
 
                         elif choice == '4':
                             delete_task_allocation(username)
+
 
                         elif choice == '0':
                             os.system('cls' if os.name == 'nt' else 'clear')
