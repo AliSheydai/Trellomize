@@ -16,9 +16,6 @@ class Model:
         self.id = uuid.uuid4()
         self.users = []
 
-    # def add_users(self, user):
-    #     self.users.append(user)
-
 
 def hash_password(password):
     salt = bcrypt.gensalt()
@@ -53,7 +50,6 @@ class Account(Model):
         self.user_info["gmail"] = email
         self.user_info["Username"] = user_name
         self.user_info["Hash_password_str"] = hash_password(password).decode('utf8')
-        # self.Hash_password = hash_password(password)
         self.user_info["Is_active"] = False if not self.active_user_account else True
         self.user_info["Regular_member"] = self.regular_member_projects
         self.user_info["Leader_member"] = self.leader_member_projects
@@ -126,7 +122,20 @@ class CreateProject(Model):
         self.members = []
         self.project_details["Project_ID"] = str(self.id)
         self.tasks = []
-        self.tasks_data = []
+        self.tasks_data = [
+            {"Task ID": task.task_unique_identifier,
+             "Title": task.title,
+             "Description": task.description,
+             "Start Time": str(task.start_time),
+             "Start Date": str(task.start_date),
+             "End Time": str(task.end_time),
+             "End Date": str(task.end_date),
+             "Assignees": task.assignees,
+             "Priority": str(task.priority)[9:],
+             "Status": str(task.status)[7:],
+             "Comments": task.comments,
+             "History": task.history} for task in self.tasks
+        ]
 
     def save_information(self, leader_id):
         self.project_details["Leader_ID"] = leader_id
@@ -144,11 +153,12 @@ class CreateProject(Model):
              "Assignees": task.assignees,
              "Priority": str(task.priority)[9:],
              "Status": str(task.status)[7:],
-             "Comments": task.comments, } for task in self.tasks
+             "Comments": task.comments,
+             "History": task.history} for task in self.tasks
         ]
         self.project_data = json.load(open("projects.json", "r"))
         for i in range(len(self.project_data)):
-            if self.project_data[i]["Project_ID"] == self.id:
+            if self.project_data[i]["Title"] == self.title:
                 del self.project_data[i]
 
         self.project_data.append(self.project_details)
@@ -180,9 +190,6 @@ class CreateTask(Model):
         ARCHIVED = 5
 
     def __init__(self, title, description):
-        # self.data = []
-        # self.data2 = []
-        self.ponter = None
         self.task_unique_identifier = str(Model())
         self.task_data = []
         self.task_properties = dict()
@@ -198,22 +205,12 @@ class CreateTask(Model):
         self.priority = CreateTask.Priority.LOW
         self.status = CreateTask.Status.BACKLOG
         self.comments = []
+        self.history = []
         self.comment = dict()
         self.comment_text = ""
         self.comment_writer = ""
-        # self.exist_file = False
-        # if not self.exist_file:
-        #     with open(f"{title_project}_tasks.json", "w") as f:
-        #             json.dump([], f, indent=4)
-        #             self.exist_file = True
 
     def save_info(self, title_project):
-        # self.data1 = json.load(open("projects.json", "r"))
-        # # self.data2 = []
-        # for item in self.data1:
-        #     if item.get("Title") == title_project:
-        #         self.data2 = item.get("Tasks Data")
-
         self.task_properties["Task ID"] = self.task_unique_identifier
         self.task_properties["Title"] = self.title
         self.task_properties["Description"] = self.description
@@ -225,21 +222,11 @@ class CreateTask(Model):
         self.task_properties["Priority"] = str(self.priority)
         self.task_properties["Status"] = str(self.status)
         self.task_properties["Comments"] = self.comments
-        # if os.path.isfile(f"{title_project}_tasks.json"):
+        self.task_properties["History"] = self.history
         self.task_data = json.load(open(f"{title_project}_tasks.json", "r"))
         self.task_data.append(self.task_properties)
         with open(f"{title_project}_tasks.json", "w") as f:
             json.dump(self.task_data, f, indent=4)
-        # else:
-        #     with open(f"{title_project}_tasks.json", "w") as f:
-        #         json.dump([], f, indent=4)
-        # self.data2.append(self.task_properties)
-        # for item in self.data1:
-        #     if item.get("Title") == title_project:
-        #         item["Tasks Data"] = self.data2
-        #     break
-        # with open("projects.json", "w") as f:
-        #             json.dump(self.data1, f, indent=4)
 
     def write_comment(self, text, username):
         self.comment_text = text
@@ -281,13 +268,6 @@ class CreateTask(Model):
         current_value = self.priority.value
         previous_value = (current_value - 2) % len(CreateTask.Priority) + 1
         self.priority = CreateTask.Priority(previous_value)
-
-    # def access_assignees(self):
-    #     self.assignees = ctypes.c_int(1)
-    #     self.ponter = ctypes.pointer(self.assignees)
-
-    # def get_assignees(self):
-    #     return self.ponter.contents.value
 
 
 def is_your_project(username):
@@ -383,29 +363,42 @@ def delete_user_project(username):
         console.print("This project is not valid!\nOr you are not the leader of this project", style="bold red")
 
 
-def task_definition(username, user_obj):
+def task_definition(username):
     if is_your_project(username):
+        project = CreateProject(title)
+        info_projects = json.load(open("projects.json", "r"))
         console.print("Please enter the title of the task you want to define", style="yellow")
         add_task_title = str(input())
         console.print("Please enter the description of the task", style="yellow")
         add_task_description = str(input())
+
+        task = CreateTask(add_task_title, add_task_description)
+        project.add_task(task)
+        project.tasks_data = [
+            {"Task ID": task.task_unique_identifier,
+             "Title": task.title,
+             "Description": task.description,
+             "Start Time": str(task.start_time),
+             "Start Date": str(task.start_date),
+             "End Time": str(task.end_time),
+             "End Date": str(task.end_date),
+             "Assignees": task.assignees,
+             "Priority": str(task.priority)[9:],
+             "Status": str(task.status)[7:],
+             "Comments": task.comments,
+             "History": task.history} for task in project.tasks
+        ]
         for i in range(len(info_projects)):
             if info_projects[i].get("Title") == title:
-                info_projects[i].get("Tasks").append(add_task_title)
-                console.print(f"{add_task_title} task defined in {title} project", style="green")
-
-                task = CreateTask(add_task_title, add_task_description)
-                task.access_assignees()
-
-                for project in user_obj.projects:
-                    if project.title == title:
-                        project.add_task(task)
-                        leader_id = next((item.get("ID") for item in info_users if username == item.get("Username")),
-                                         None)
-                        project.save_information(leader_id)
-
-                passing()
+                info_projects[i]["Tasks"].append(project.tasks[0].title)
+                info_projects[i].get("Tasks Data").append(project.tasks_data[0])
                 break
+
+        with open("projects.json", "w") as f:
+            json.dump(info_projects, f, indent=4)
+
+        console.print(f"{add_task_title} task defined in {title} project", style="green")
+        passing()
     else:
         console.print("This project is not valid!\nOr you are not the leader of this project!", style="bold red")
         passing()
@@ -450,20 +443,29 @@ def task_allocation(username):
                     (item.get("ID") for item in info_users if username == item.get("Username")), None):
                 tasks = item.get("Tasks")
                 members = item.get("Members")
-                members.append(f"{username}")
+                if username not in members:
+                    members.append(username)
+
                 is_exist_project = True
                 break
 
     if is_exist_project:
         console.print(f"Tasks: {tasks}")
-        console.print("Please enter the name of the task you want to allocate", style="yellow")
+        console.print("Please enter the name of the task to allocate for you", style="yellow")
         allocation_task = str(input())
         if allocation_task in tasks:
             console.print(f"Members: {members}")
             console.print("Enter the name of the person you want to assign the task", style="yellow")
             user_allocation = str(input())
+
+            allocation_task_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            task_history = dict()
+            task_history["Changing User"] = f"{username};({title} project leader)"
+            task_history["Changing Date"] = allocation_task_date
+            task_history["Action"] = f"{user_allocation} took {allocation_task} task"
+
             if user_allocation in members:
-                # self.assignees.append(user_allocation)
+
                 for i in range(len(info_projects)):
                     if info_projects[i].get("Title") == title:
                         for j in range(len(info_projects[i].get("Tasks Data"))):
@@ -473,15 +475,13 @@ def task_allocation(username):
                                     console.print(
                                         f"{user_allocation} assign the {allocation_task} task in {title} project",
                                         style="green")
+                                    info_projects[i].get("Tasks Data")[j]["History"].append(task_history)
+
                                     with open("projects.json", "w") as f:
                                         json.dump(info_projects, f, indent=4)
                                 else:
                                     console.print(f"{user_allocation} has already undertaken this task!",
                                                   style="bold red")
-                                passing()
-                                break
-                            else:
-                                console.print("Invalid task!", style="bold red")
                                 passing()
                                 break
             else:
@@ -510,7 +510,9 @@ def delete_task_allocation(username):
                     (item.get("ID") for item in info_users if username == item.get("Username")), None):
                 tasks = item.get("Tasks")
                 members = item.get("Members")
-                members.append(f"{username}")
+                if username not in members:
+                    members.append(username)
+
                 is_exist_project = True
                 break
 
@@ -522,6 +524,13 @@ def delete_task_allocation(username):
             console.print(f"Members: {members}")
             console.print("Enter the name of the person you want to picking up the task", style="yellow")
             user_delete = str(input())
+
+            allocation_task_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            task_history = dict()
+            task_history["Changing User"] = f"{username};({title} project leader)"
+            task_history["Changing Date"] = allocation_task_date
+            task_history["Action"] = f"{user_delete} left {delete_allocation_task} task"
+
             if user_delete in members:
                 for i in range(len(info_projects)):
                     if info_projects[i].get("Title") == title:
@@ -529,17 +538,15 @@ def delete_task_allocation(username):
                             if info_projects[i].get("Tasks Data")[j]["Title"] == delete_allocation_task:
                                 if user_delete in info_projects[i].get("Tasks Data")[j]["Assignees"]:
                                     info_projects[i].get("Tasks Data")[j]["Assignees"].remove(user_delete)
+                                    info_projects[i].get("Tasks Data")[j]["History"].append(task_history)
                                     console.print(
                                         f"{user_delete} delete from the {delete_allocation_task} task in {title} project",
                                         style="green")
+
                                     with open("projects.json", "w") as f:
                                         json.dump(info_projects, f, indent=4)
                                 else:
                                     console.print(f"{user_delete} not undertaken this task!", style="bold red")
-                                passing()
-                                break
-                            else:
-                                console.print("Invalid task!", style="bold red")
                                 passing()
                                 break
             else:
@@ -565,193 +572,245 @@ def task_change_page():
     console.print(table)
 
 
-def show_project_tasks(username):
-    info_projects = json.load(open("projects.json", "r"))
-    flag = is_your_project(username)
+def task_property_table():
     tasks_data = []
-    tasks = []
     for i in range(len(info_projects)):
         if title == info_projects[i].get("Title"):
             tasks_data = info_projects[i].get("Tasks Data")
-            tasks = info_projects[i].get("Tasks")
             break
+
+    table = Table(title="Task Status Overview")
+    table.add_column("Title", style="cyan")
+    table.add_column("Description", style="green")
+    table.add_column("Start Date", style="yellow")
+    table.add_column("End Date", style="blue")
+    table.add_column("Assignees", style="blue")
+    table.add_column("Priority", style="cyan")
+    table.add_column("Status", style="cyan")
+    table.add_column("Comments", style="green")
+
+    status_order = {
+        "Status.BACKLOG": 5,
+        "Status.TODO": 4,
+        "Status.DOING": 3,
+        "Status.DONE": 2,
+        "Status.ARCHIVED": 1,
+    }
+
+    sorted_tasks = sorted(tasks_data, key=lambda x: status_order.get(x["Status"], 0))
+
+    for task in sorted_tasks:
+        table.add_row(
+            str(task["Title"]),
+            task["Description"],
+            task["Start Date"],
+            task["End Date"],
+            str(task["Assignees"]),
+            str(task["Priority"]),
+            str(task["Status"]),
+            str(task["Comments"]),
+        )
+    console.print(table)
+
+
+def Change_task_info(username):
+    info_projects = json.load(open("projects.json", "r"))
+    flag = is_your_project(username)
+    flag2 = False
+    tasks = []
+
     if any(title == item.get("Title") for item in info_projects):
         if any(username in item.get("Members") for item in info_projects) or flag:
-
-            table = Table(title="Task Status Overview")
-            table.add_column("Title", style="cyan")
-            table.add_column("Description", style="green")
-            table.add_column("Start Date", style="yellow")
-            table.add_column("End Date", style="blue")
-            table.add_column("Assignees", style="blue")
-            table.add_column("Priority", style="cyan")
-            table.add_column("Status", style="cyan")
-            table.add_column("Comments", style="green")
-
-            status_order = {
-                "Status.BACKLOG": 5,
-                "Status.TODO": 4,
-                "Status.DOING": 3,
-                "Status.DONE": 2,
-                "Status.ARCHIVED": 1,
-            }
-
-            sorted_tasks = sorted(tasks_data, key=lambda x: status_order.get(x["Status"], 0))
-
-            for task in sorted_tasks:
-                table.add_row(
-                    str(task["Title"]),
-                    task["Description"],
-                    task["Start Date"],
-                    task["End Date"],
-                    str(task["Assignees"]),
-                    str(task["Priority"]),
-                    str(task["Status"]),
-                    str(task["Comments"]),
-                )
-
-            console.print(table)
-            console.print("Do you want to change a task?", style="yellow")
+            task_property_table()
+            console.print("Enter the title of target task:", style="yellow")
+            target_task = str(input())
+            for i in range(len(info_projects)):
+                if title == info_projects[i].get("Title"):
+                    tasks = info_projects[i].get("Tasks")
+                    for j in range(len(info_projects[i]["Tasks Data"])):
+                        if info_projects[i]["Tasks Data"][j]["Title"] == target_task:
+                            if username in info_projects[i]["Tasks Data"][j]["Assignees"]:
+                                flag2 = True
+                                break
+            console.print("Do you want to change this task?", style="yellow")
             console.print("1- Yes", style="yellow")
             console.print("2- No", style="yellow")
             choice = str(input())
             if choice == '1':
-                task_change_page()
-                console.print("Enter your select:", style="yellow")
-                choice = str(input())
-                if choice == '1':
-                    console.print("Enter the title of target task:", style="yellow")
-                    target_task = str(input())
-                    if target_task in tasks:
-                        console.print("Enter the new task title:", style="yellow")
-                        new_task_title = str(input())
-                        for i in range(len(info_projects)):
-                            if title == info_projects[i].get("Title"):
-                                for j in range(len(info_projects[i]["Tasks Data"])):
-                                    if info_projects[i]["Tasks Data"][j]["Title"] == target_task:
-                                        info_projects[i]["Tasks Data"][j]["Title"] = new_task_title
-                                        info_projects[i]["Tasks"] = [new_task_title if x == target_task else x for x in
-                                                                     info_projects[i]["Tasks"]]
-                                        break
-                        with open("projects.json", "w") as f:
-                            json.dump(info_projects, f, indent=4)
-                        console.print("The task name was successfully renamed", style="green")
-                        passing()
-                    else:
-                        console.print("Invalid task!", style="bold red")
-                        passing()
-                elif choice == '2':
-                    console.print("Enter the title of target task:", style="yellow")
-                    target_task = str(input())
-                    if target_task in tasks:
-                        console.print("Enter the new task description:", style="yellow")
-                        new_task_description = str(input())
-                        for i in range(len(info_projects)):
-                            if title == info_projects[i].get("Title"):
-                                for j in range(len(info_projects[i]["Tasks Data"])):
-                                    if info_projects[i]["Tasks Data"][j]["Title"] == target_task:
-                                        info_projects[i]["Tasks Data"][j]["Description"] = new_task_description
-                                        break
-                        with open("projects.json", "w") as f:
-                            json.dump(info_projects, f, indent=4)
-                        console.print("The task description was successfully changed.", style="green")
-                        passing()
-                    else:
-                        console.print("Invalid task!", style="bold red")
-                        passing()
-
-                elif choice == '3':
-                    console.print("Enter the title of target task:", style="yellow")
-                    target_task = str(input())
-                    if target_task in tasks:
-                        console.print("1- Increase task status", style="yellow")
-                        console.print("2- Reduce task status", style="yellow")
-                        select = str(input())
-
-                        task_description = ""
-                        for i in range(len(info_projects)):
-                            if title == info_projects[i].get("Title"):
-                                for j in range(len(info_projects[i]["Tasks Data"])):
-                                    if info_projects[i]["Tasks Data"][j]["Title"] == target_task:
-                                        task_description = info_projects[i]["Tasks Data"][j]["Description"]
-                                        current_status = info_projects[i]["Tasks Data"][j]["Status"]
-                                        break
-                        task = CreateTask(target_task, task_description)
-                        status_enum = CreateTask.Status[current_status]
-                        task.status = status_enum
-                        if select == '1':
-                            task.next_status()
-                        elif select == '2':
-                            task.previous_status()
+                if flag2 or flag:
+                    task_change_page()
+                    console.print("Enter your select:", style="yellow")
+                    choice = str(input())
+                    if choice == '1':
+                        if target_task in tasks:
+                            console.print("Enter the new task title:", style="yellow")
+                            new_task_title = str(input())
+                            change_title_date = datetime.datetime.now()
+                            task_history = dict()
+                            task_history["Changing User"] = username
+                            task_history["Changing Date"] = change_title_date.strftime("%Y-%m-%d %H:%M:%S")
+                            task_history["Action"] = "change title"
+                            for i in range(len(info_projects)):
+                                if title == info_projects[i].get("Title"):
+                                    for j in range(len(info_projects[i]["Tasks Data"])):
+                                        if info_projects[i]["Tasks Data"][j]["Title"] == target_task:
+                                            info_projects[i]["Tasks Data"][j]["Title"] = new_task_title
+                                            info_projects[i]["Tasks"] = [new_task_title if x == target_task else x for x
+                                                                         in info_projects[i]["Tasks"]]
+                                            info_projects[i]["Tasks Data"][j]["History"].append(task_history)
+                                            break
+                            with open("projects.json", "w") as f:
+                                json.dump(info_projects, f, indent=4)
+                            console.print("The task name was successfully renamed", style="green")
+                            passing()
                         else:
-                            console.print("Invalid choice!", style="black")
+                            console.print("Invalid task!", style="bold red")
                             passing()
-                        for i in range(len(info_projects)):
-                            if title == info_projects[i].get("Title"):
-                                for j in range(len(info_projects[i]["Tasks Data"])):
-                                    if info_projects[i]["Tasks Data"][j]["Title"] == target_task:
-                                        info_projects[i]["Tasks Data"][j]["Status"] = str(task.status)[7:]
-                                        break
-                        if select == '1':
-                            console.print("Increase task status was done successfully.", style="green")
+                    elif choice == '2':
+                        if target_task in tasks:
+                            console.print("Enter the new task description:", style="yellow")
+                            new_task_description = str(input())
+                            change_title_date = datetime.datetime.now()
+                            task_history = dict()
+                            task_history["Changing User"] = username
+                            task_history["Changing Date"] = change_title_date.strftime("%Y-%m-%d %H:%M:%S")
+                            task_history["Action"] = "change description"
+                            for i in range(len(info_projects)):
+                                if title == info_projects[i].get("Title"):
+                                    for j in range(len(info_projects[i]["Tasks Data"])):
+                                        if info_projects[i]["Tasks Data"][j]["Title"] == target_task:
+                                            info_projects[i]["Tasks Data"][j]["Description"] = new_task_description
+                                            info_projects[i]["Tasks Data"][j]["History"].append(task_history)
+                                            break
+                            with open("projects.json", "w") as f:
+                                json.dump(info_projects, f, indent=4)
+                            console.print("The task description was successfully changed.", style="green")
                             passing()
-                        elif select == '2':
-                            console.print("Reduce task status was done successfully.", style="green")
-                            passing()
-
-                        with open("projects.json", "w") as f:
-                            json.dump(info_projects, f, indent=4)
-                    else:
-                        console.print("Invalid task!", style="bold red")
-                        passing()
-                elif choice == '4':
-                    console.print("Enter the title of target task:", style="yellow")
-                    target_task = str(input())
-                    if target_task in tasks:
-                        console.print("1- Increase task priority", style="yellow")
-                        console.print("2- Reduce task priority", style="yellow")
-                        select = str(input())
-
-                        task_description = ""
-                        for i in range(len(info_projects)):
-                            if title == info_projects[i].get("Title"):
-                                for j in range(len(info_projects[i]["Tasks Data"])):
-                                    if info_projects[i]["Tasks Data"][j]["Title"] == target_task:
-                                        task_description = info_projects[i]["Tasks Data"][j]["Description"]
-                                        current_priority = info_projects[i]["Tasks Data"][j]["Priority"]
-                                        break
-                        task = CreateTask(target_task, task_description)
-                        priority_enum = CreateTask.Priority[current_priority]
-                        task.priority = priority_enum
-                        if select == '1':
-                            task.next_priority()
-                        elif select == '2':
-                            task.previous_priority()
                         else:
-                            console.print("Invalid choice!", style="black")
-                            passing()
-                        for i in range(len(info_projects)):
-                            if title == info_projects[i].get("Title"):
-                                for j in range(len(info_projects[i]["Tasks Data"])):
-                                    if info_projects[i]["Tasks Data"][j]["Title"] == target_task:
-                                        info_projects[i]["Tasks Data"][j]["Priority"] = str(task.priority)[9:]
-                                        break
-                        if select == '1':
-                            console.print("Increase task priority was done successfully.", style="green")
-                            passing()
-                        elif select == '2':
-                            console.print("Reduce task priority was done successfully.", style="green")
+                            console.print("Invalid task!", style="bold red")
                             passing()
 
-                        with open("projects.json", "w") as f:
-                            json.dump(info_projects, f, indent=4)
+                    elif choice == '3':
+                        if target_task in tasks:
+                            console.print("1- Increase task status", style="yellow")
+                            console.print("2- Reduce task status", style="yellow")
+                            select = str(input())
+
+                            is_changed = True
+                            change_title_date = datetime.datetime.now()
+                            task_history = dict()
+                            task_history["Changing User"] = username
+                            task_history["Changing Date"] = change_title_date.strftime("%Y-%m-%d %H:%M:%S")
+                            if select == '1':
+                                task_history["Action"] = "increase status"
+                            elif select == '2':
+                                task_history["Action"] = "reduce status"
+                            else:
+                                is_changed = False
+
+                            task_description = ""
+                            for i in range(len(info_projects)):
+                                if title == info_projects[i].get("Title"):
+                                    for j in range(len(info_projects[i]["Tasks Data"])):
+                                        if info_projects[i]["Tasks Data"][j]["Title"] == target_task:
+                                            task_description = info_projects[i]["Tasks Data"][j]["Description"]
+                                            current_status = info_projects[i]["Tasks Data"][j]["Status"]
+                                            if is_changed:
+                                                info_projects[i]["Tasks Data"][j]["History"].append(task_history)
+                                            break
+                            task = CreateTask(target_task, task_description)
+                            status_enum = CreateTask.Status[current_status]
+                            task.status = status_enum
+                            if select == '1':
+                                task.next_status()
+                            elif select == '2':
+                                task.previous_status()
+                            else:
+                                console.print("Invalid choice!", style="black")
+                                passing()
+                            for i in range(len(info_projects)):
+                                if title == info_projects[i].get("Title"):
+                                    for j in range(len(info_projects[i]["Tasks Data"])):
+                                        if info_projects[i]["Tasks Data"][j]["Title"] == target_task:
+                                            info_projects[i]["Tasks Data"][j]["Status"] = str(task.status)[7:]
+                                            break
+                            if select == '1':
+                                console.print("Increase task status was done successfully.", style="green")
+                                passing()
+                            elif select == '2':
+                                console.print("Reduce task status was done successfully.", style="green")
+                                passing()
+
+                            with open("projects.json", "w") as f:
+                                json.dump(info_projects, f, indent=4)
+                        else:
+                            console.print("Invalid task!", style="bold red")
+                            passing()
+                    elif choice == '4':
+                        if target_task in tasks:
+                            console.print("1- Increase task priority", style="yellow")
+                            console.print("2- Reduce task priority", style="yellow")
+                            select = str(input())
+
+                            is_changed = True
+                            change_title_date = datetime.datetime.now()
+                            task_history = dict()
+                            task_history["Changing User"] = username
+                            task_history["Changing Date"] = change_title_date.strftime("%Y-%m-%d %H:%M:%S")
+                            if select == '1':
+                                task_history["Action"] = "increase priority"
+                            elif select == '2':
+                                task_history["Action"] = "reduce priority"
+                            else:
+                                is_changed = False
+
+                            task_description = ""
+                            for i in range(len(info_projects)):
+                                if title == info_projects[i].get("Title"):
+                                    for j in range(len(info_projects[i]["Tasks Data"])):
+                                        if info_projects[i]["Tasks Data"][j]["Title"] == target_task:
+                                            task_description = info_projects[i]["Tasks Data"][j]["Description"]
+                                            current_priority = info_projects[i]["Tasks Data"][j]["Priority"]
+                                            if is_changed:
+                                                info_projects[i]["Tasks Data"][j]["History"].append(task_history)
+                                            break
+                            task = CreateTask(target_task, task_description)
+                            priority_enum = CreateTask.Priority[current_priority]
+                            task.priority = priority_enum
+                            if select == '1':
+                                task.next_priority()
+                            elif select == '2':
+                                task.previous_priority()
+                            else:
+                                console.print("Invalid choice!", style="black")
+                                passing()
+                            for i in range(len(info_projects)):
+                                if title == info_projects[i].get("Title"):
+                                    for j in range(len(info_projects[i]["Tasks Data"])):
+                                        if info_projects[i]["Tasks Data"][j]["Title"] == target_task:
+                                            info_projects[i]["Tasks Data"][j]["Priority"] = str(task.priority)[9:]
+                                            break
+                            if select == '1':
+                                console.print("Increase task priority was done successfully.", style="green")
+                                passing()
+                            elif select == '2':
+                                console.print("Reduce task priority was done successfully.", style="green")
+                                passing()
+
+                            with open("projects.json", "w") as f:
+                                json.dump(info_projects, f, indent=4)
+                        else:
+                            console.print("Invalid task!", style="bold red")
+                            passing()
+                    elif choice == '0':
+                        pass
                     else:
-                        console.print("Invalid task!", style="bold red")
+                        console.print("Invalid choice!", style="black")
                         passing()
-                elif choice == '0':
-                    pass
                 else:
-                    console.print("Invalid choice!", style="black")
+                    console.print(
+                        f"You are not a assignee of {title} project.\nYou can not change the {target_task} task property",
+                        style="bold red")
                     passing()
             elif choice == '2':
                 pass
@@ -759,7 +818,7 @@ def show_project_tasks(username):
                 console.print("Invalid key!Please try again.", style="black")
                 passing()
         else:
-            console.print(f"You are not a member of {title} project", style="bold red")
+            console.print(f"You are not a member of {title} project.", style="bold red")
             passing()
     else:
         console.print("Invalid project!", style="bold red")
@@ -922,9 +981,7 @@ def menu():
             password = input()
             console.print("Enter your email..", style="blue")
             email = input()
-            # if user.register(username, password, email):
-            #     model.add_users(user)
-
+            user.register(username, password, email)
 
         elif choice == '2':
             console.print("Enter your username..", style="blue")
@@ -967,6 +1024,7 @@ def menu():
                             leader_id = next(
                                 (item.get("ID") for item in info_users if username == item.get("Username")), None)
                             project.save_information(leader_id)
+                            console.print(f"{add_task_title} task defined in {title} project", style="green")
                             console.print("\nIf you want to end the definition of the task, enter the 0 key",
                                           style="black")
                             console.print("If you want to define a new task, enter a any key (except 0)", style="black")
@@ -1024,7 +1082,7 @@ def menu():
                         choice = input()
 
                         if choice == '1':
-                            task_definition(username, user)
+                            task_definition(username)
 
                         elif choice == '2':
                             task_delete(username)
@@ -1036,7 +1094,7 @@ def menu():
                             delete_task_allocation(username)
 
                         elif choice == '5':
-                            show_project_tasks(username)
+                            Change_task_info(username)
 
                         elif choice == '6':
                             show_task_tables(username)
