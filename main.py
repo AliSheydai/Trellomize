@@ -289,13 +289,24 @@ class CreateTask(Model):
 
 
 def is_your_project(username):
-    console.print("Enter title of your project", style="yellow")
-    global title
-    title = input()
     global info_projects
     info_projects = json.load(open("projects.json", "r"))
     global info_users
     info_users = json.load(open("users.json", "r"))
+    global projects
+    projects = []
+    global users
+    users = []
+
+    for user in info_users:
+        if user["Username"] == username:
+            projects = user["Leader_member"]
+        if user["Username"] != username:
+            users.append(user["Username"])
+    console.print(projects, style="green")
+    console.print("Enter title of your project", style="yellow")
+    global title
+    title = input()
 
     for item in info_projects:
         if title == item.get("Title"):
@@ -306,6 +317,12 @@ def is_your_project(username):
 
 
 def delete_project(username):
+    # info_users = json.load(open ("users.json", "r"))
+    # projects = []
+    # for user in info_users:
+    #     if user["Username"] == username:
+    #         projects = user["Leader_member"]
+    # console.print(projects)
     if is_your_project(username=username):
         for i in range(len(info_projects)):
             if info_projects[i].get("Title") == title:
@@ -335,17 +352,28 @@ def delete_project(username):
 
 
 def add_user_project(username):
+    # info_users = json.load(open ("users.json", "r"))
+    # info_projects = json.load(open ("projects.json", "r"))
+    # projects = []
+    # users = []
+
+    # for user in info_users:
+    #     if user["Username"] == username:
+    #         projects = user["Leader_member"]
+    #     if user["Username"] != username:
+    #         users.append(user["Username"])
+    # console.print(projects, style="green")
     if is_your_project(username=username):
+        console.print(users, style="green")
         console.print("Please enter the username you want to add to the project", style="yellow")
         add_user_name = str(input())
         is_user_appened = True
-        info_users = json.load(open("users.json", "r"))
-        info_projects = json.load(open("projects.json", "r"))
+
         for i in range(len(info_projects)):
             if info_projects[i]["Title"] == title:
                 if add_user_name not in info_projects[i]["Members"]:
                     is_user_appened = False
-        if any(add_user_name in item.get("Username") for item in info_users):
+        if any(add_user_name in item.get("Username") for item in info_users) and add_user_name != username:
             if not is_user_appened:
                 for i in range(len(info_projects)):
                     if info_projects[i].get("Title") == title:
@@ -364,7 +392,7 @@ def add_user_project(username):
                 console.print(f"{username} is already append to {title} ptoject!", style="blue")
                 passing()
         else:
-            console.print("Entered username is not valid!", style="bold red")
+            console.print("Invalid username!", style="bold red")
             passing()
     else:
         console.print("This project is not valid!\nOr you are not the leader of this project", style="bold red")
@@ -372,14 +400,23 @@ def add_user_project(username):
 
 
 def delete_user_project(username):
+    members = []
     if is_your_project(username=username):
+        for user in info_users:
+            if user["Username"] != username and title in user["Regular_member"]:
+                members.append(user["Username"])
+        console.print(members, style="green")
         console.print("Please enter the username you want to delete from the project", style="yellow")
         delete_user_name = str(input())
-        info_users = json.load(open("users.json", "r"))
         for i in range(len(info_projects)):
             if info_projects[i].get("Title") == title:
                 if delete_user_name in info_projects[i].get("Members"):
                     info_projects[i].get("Members").remove(delete_user_name)
+                    for task in info_projects[i]["Tasks Data"]:
+                        try:
+                            task["Assignees"].remove(delete_user_name)
+                        except ValueError:
+                            pass
                     with open("projects.json", "w") as f:
                         json.dump(info_projects, f, indent=4)
 
@@ -439,12 +476,19 @@ def task_definition(username):
 
 
 def task_delete(username):
+    valid_task = False
     if is_your_project(username=username):
+        tasks = []
+        for project in info_projects:
+            if project["Title"] == title:
+                tasks = project["Tasks"]
+        console.print(tasks)
         console.print("Please enter the name of the task you want to delete", style="yellow")
         delete_task = str(input())
         for i in range(len(info_projects)):
             if info_projects[i].get("Title") == title:
                 if delete_task in info_projects[i].get("Tasks"):
+                    valid_task = True
                     info_projects[i].get("Tasks").remove(delete_task)
                     console.print(f"{delete_task} task delete from {title} project", style="green")
                     logger.info(f"{delete_task} task delete from {title} project")
@@ -453,24 +497,28 @@ def task_delete(username):
                         del info_projects[i].get("Tasks Data")[j]
                     with open("projects.json", "w") as f:
                         json.dump(info_projects, f, indent=4)
-                    passing()
                     break
-                else:
-                    console.print("Enterd task is not valid!", style="bold red")
-                    passing()
+        if not valid_task:
+            console.print("Enterd task is not valid!", style="bold red")
+            passing()
     else:
         console.print("This project is not valid!\nOr you are not the leader of this project!", style="bold red")
         passing()
 
 
 def task_allocation(username):
+    info_projects = json.load(open("projects.json", "r"))
+    info_users = json.load(open("users.json", "r"))
     is_exist_project = False
     tasks = []
     members = []
+    projects_title = []
+    for user in info_users:
+        if user["Username"] == username:
+            projects_title = user["Leader_member"]
+    console.print(projects_title)
     console.print("Enter title of your project", style="yellow")
     title = str(input())
-    info_projects = json.load(open("projects.json", "r"))
-    info_users = json.load(open("users.json", "r"))
 
     for item in info_projects:
         if title == item.get("Title"):
@@ -517,8 +565,7 @@ def task_allocation(username):
                                     with open("projects.json", "w") as f:
                                         json.dump(info_projects, f, indent=4)
                                 else:
-                                    console.print(f"{user_allocation} has already undertaken this task!",
-                                                  style="bold red")
+                                    console.print(f"{user_allocation} has already undertaken this task!", style="blue")
                                 passing()
                                 break
             else:
@@ -533,13 +580,18 @@ def task_allocation(username):
 
 
 def delete_task_allocation(username):
+    info_projects = json.load(open("projects.json", "r"))
+    info_users = json.load(open("users.json", "r"))
     is_exist_project = False
     tasks = []
     members = []
+    projects_title = []
+    for user in info_users:
+        if user["Username"] == username:
+            projects_title = user["Leader_member"]
+    console.print(projects_title)
     console.print("Enter title of your project", style="yellow")
     title = input()
-    info_projects = json.load(open("projects.json", "r"))
-    info_users = json.load(open("users.json", "r"))
 
     for item in info_projects:
         if title == item.get("Title"):
@@ -962,6 +1014,7 @@ def task_comment(username):
 
     if any(title == item.get("Title") for item in info_projects):
         if any(username in item.get("Members") for item in info_projects) or flag:
+            console.print(tasks)
             console.print("Enter the title of target task:", style="yellow")
             target_task = str(input())
             if target_task in tasks:
@@ -1154,7 +1207,7 @@ def menu():
                                     json.dump(info_users, f, indent=4)
 
                         project = CreateProject(title)
-                        console.print("The construction of the project was completed successfully", style="bold green")
+                        # console.print("The construction of the project was completed successfully", style= "bold green")
                         logger.info(f"The construction of the {title} project was created")
 
                         while True:
@@ -1202,9 +1255,11 @@ def menu():
                             console.print("List of projects in which you are the leader: ", style="blue")
                             if info_users[i].get("Leader_member"):
                                 console.print(info_users[i].get("Leader_member"))
+                                passing()
                                 break
                             else:
                                 console.print("Nothing found!", style="black")
+                                passing()
                                 break
 
                 elif choice == '6':
@@ -1214,9 +1269,11 @@ def menu():
                             console.print("List of projects in which you are a regular member: ", style="blue")
                             if info_users[i].get("Regular_member"):
                                 console.print(info_users[i].get("Regular_member"))
+                                passing()
                                 break
                             else:
                                 console.print("Nothing found!", style="black")
+                                passing()
                                 break
 
                 elif choice == '7':
