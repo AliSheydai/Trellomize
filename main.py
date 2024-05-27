@@ -7,8 +7,10 @@ import uuid
 import datetime
 from enum import Enum
 import bcrypt
+from loguru import logger
 
 console = console.Console()
+logger.add("app.log", rotation="1 week", level="INFO", format="{time:MMMM D, YYYY > HH:mm:ss} | {level} | {message}")
 
 
 class Model:
@@ -49,7 +51,7 @@ class Account(Model):
     def register(self, user_name, password, email):
         self.user_info["gmail"] = email
         self.user_info["Username"] = user_name
-        self.user_info["Hash_password_str"] = hash_password(password).decode('utf8')
+        self.user_info["Hash_password_str"] = hash_password(password=password).decode('utf8')
         self.user_info["Is_active"] = False if not self.active_user_account else True
         self.user_info["Regular_member"] = self.regular_member_projects
         self.user_info["Leader_member"] = self.leader_member_projects
@@ -84,8 +86,10 @@ class Account(Model):
                 json.dump(self.user_data, f, indent=4)
             console.print("\nAccount created successfully", style="bold green")
             self.active_user_account = True
+            logger.info(f"Account {user_name} was successfully built.")
             return True
         else:
+            logger.warning(f"{user_name} account creation failed")
             return False
 
     def login(self, user_name, password):
@@ -95,23 +99,25 @@ class Account(Model):
                 if not item.get("Is_active"):
                     console.print("The user account has been closed by the system administrator."
                                   " You are not allowed to access the account!\n", style="bold red")
+                    logger.warning(f"Login failed for user {user_name}")
                     passing()
                     return False
-                # if hash_password(password) == item.get("Hash_password"):
-                if verify_password(password, item.get("Hash_password_str").encode('utf8')):
-                    console.print(f"\nWelcome {user_name}",
-                                  style="bold green")
+
+                if verify_password(password=password, hashed_password=item.get("Hash_password_str").encode('utf8')):
+                    console.print(f"\nWelcome {user_name}", style="bold green")
+                    logger.info(f"User {user_name} logged in")
                     self.logged_in = True
                     return True
                 else:
                     console.print("You have entered the wrong password!\n", style="bold red")
+                    logger.warning(f"Login failed for user {user_name}")
+                    passing()
                     return False
 
         if not self.logged_in:
             console.print("The username entered is not valid!\n", style="bold red")
-
-    def add_project(self, project):
-        self.projects.append(project)
+            logger.warning(f"Login failed for user {user_name}")
+            passing()
 
 
 class CreateProject(Model):
@@ -289,7 +295,7 @@ def is_your_project(username):
 
 
 def delete_project(username):
-    if is_your_project(username):
+    if is_your_project(username=username):
         for i in range(len(info_projects)):
             if info_projects[i].get("Title") == title:
                 console.print(f"Are you sure to delete the {title} project?", style="yellow")
@@ -302,6 +308,7 @@ def delete_project(username):
                         json.dump(info_projects, f, indent=4)
 
                     console.print("The project was deleted successfully.", style="green")
+                    logger.info(f"{title} project was deleted")
                     for i in range(len(info_users)):
                         if info_users[i].get("Username") == username:
                             info_users[i].get("Leader_member").remove(title)
@@ -317,31 +324,44 @@ def delete_project(username):
 
 
 def add_user_project(username):
-    if is_your_project(username):
+    if is_your_project(username=username):
         console.print("Please enter the username you want to add to the project", style="yellow")
         add_user_name = str(input())
+        is_user_appened = True
         info_users = json.load(open("users.json", "r"))
+        info_projects = json.load(open("projects.json", "r"))
+        for i in range(len(info_projects)):
+            if info_projects[i]["Title"] == title:
+                if add_user_name not in info_projects[i]["Members"]:
+                    is_user_appened = False
         if any(add_user_name in item.get("Username") for item in info_users):
-            for i in range(len(info_projects)):
-                if info_projects[i].get("Title") == title:
-                    info_projects[i].get("Members").append(add_user_name)
-                    with open("projects.json", "w") as f:
-                        json.dump(info_projects, f, indent=4)
+            if not is_user_appened:
+                for i in range(len(info_projects)):
+                    if info_projects[i].get("Title") == title:
+                        info_projects[i].get("Members").append(add_user_name)
+                        with open("projects.json", "w") as f:
+                            json.dump(info_projects, f, indent=4)
 
-                    for i in range(len(info_users)):
-                        if info_users[i].get("Username") == add_user_name:
-                            info_users[i].get("Regular_member").append(title)
-                            with open("users.json", "w") as f:
-                                json.dump(info_users, f, indent=4)
-                    console.print(f"{add_user_name} added to {title} project", style="green")
+                        for i in range(len(info_users)):
+                            if info_users[i].get("Username") == add_user_name:
+                                info_users[i].get("Regular_member").append(title)
+                                with open("users.json", "w") as f:
+                                    json.dump(info_users, f, indent=4)
+                        console.print(f"{add_user_name} added to {title} project", style="green")
+                        logger.info(f"{add_user_name} added to {title} project")
+            else:
+                console.print(f"{username} is already append to {title} ptoject!", style="blue")
+                passing()
         else:
             console.print("Entered username is not valid!", style="bold red")
+            passing()
     else:
         console.print("This project is not valid!\nOr you are not the leader of this project", style="bold red")
+        passing()
 
 
 def delete_user_project(username):
-    if is_your_project(username):
+    if is_your_project(username=username):
         console.print("Please enter the username you want to delete from the project", style="yellow")
         delete_user_name = str(input())
         info_users = json.load(open("users.json", "r"))
@@ -358,6 +378,7 @@ def delete_user_project(username):
                             with open("users.json", "w") as f:
                                 json.dump(info_users, f, indent=4)
                     console.print(f"{delete_user_name} deleted from {title} project", style="green")
+                    logger.info(f"{delete_user_name} deleted from {title} project by {username}")
                 else:
                     console.print("Entered username is not valid!", style="bold red")
     else:
@@ -365,7 +386,7 @@ def delete_user_project(username):
 
 
 def task_definition(username):
-    if is_your_project(username):
+    if is_your_project(username=username):
         project = CreateProject(title)
         info_projects = json.load(open("projects.json", "r"))
         console.print("Please enter the title of the task you want to define", style="yellow")
@@ -399,6 +420,7 @@ def task_definition(username):
             json.dump(info_projects, f, indent=4)
 
         console.print(f"{add_task_title} task defined in {title} project", style="green")
+        logger.info(f"{add_task_title} task defined in {title} project")
         passing()
     else:
         console.print("This project is not valid!\nOr you are not the leader of this project!", style="bold red")
@@ -406,7 +428,7 @@ def task_definition(username):
 
 
 def task_delete(username):
-    if is_your_project(username):
+    if is_your_project(username=username):
         console.print("Please enter the name of the task you want to delete", style="yellow")
         delete_task = str(input())
         for i in range(len(info_projects)):
@@ -414,6 +436,7 @@ def task_delete(username):
                 if delete_task in info_projects[i].get("Tasks"):
                     info_projects[i].get("Tasks").remove(delete_task)
                     console.print(f"{delete_task} task delete from {title} project", style="green")
+                    logger.info(f"{delete_task} task delete from {title} project")
                 for j in range(len(info_projects[i].get("Tasks Data"))):
                     if info_projects[i].get("Tasks Data")[j]["Title"] == delete_task:
                         del info_projects[i].get("Tasks Data")[j]
@@ -476,6 +499,8 @@ def task_allocation(username):
                                     console.print(
                                         f"{user_allocation} assign the {allocation_task} task in {title} project",
                                         style="green")
+                                    logger.info(
+                                        f"{user_allocation} assign the {allocation_task} task in {title} project")
                                     info_projects[i].get("Tasks Data")[j]["History"].append(task_history)
 
                                     with open("projects.json", "w") as f:
@@ -543,6 +568,8 @@ def delete_task_allocation(username):
                                     console.print(
                                         f"{user_delete} delete from the {delete_allocation_task} task in {title} project",
                                         style="green")
+                                    logger.info(
+                                        f"{user_delete} delete from the {delete_allocation_task} task in {title} project")
 
                                     with open("projects.json", "w") as f:
                                         json.dump(info_projects, f, indent=4)
@@ -616,7 +643,7 @@ def task_property_table():
 
 def Change_task_info(username):
     info_projects = json.load(open("projects.json", "r"))
-    flag = is_your_project(username)
+    flag = is_your_project(username=username)
     flag2 = False
     tasks = []
 
@@ -663,6 +690,8 @@ def Change_task_info(username):
                             with open("projects.json", "w") as f:
                                 json.dump(info_projects, f, indent=4)
                             console.print("The task name was successfully renamed", style="green")
+                            logger.info(f"The task name was successfully renamed")
+
                             passing()
                         else:
                             console.print("Invalid task!", style="bold red")
@@ -686,6 +715,7 @@ def Change_task_info(username):
                             with open("projects.json", "w") as f:
                                 json.dump(info_projects, f, indent=4)
                             console.print("The task description was successfully changed.", style="green")
+                            logger.info(f"The task description was successfully changed")
                             passing()
                         else:
                             console.print("Invalid task!", style="bold red")
@@ -737,9 +767,13 @@ def Change_task_info(username):
                                             break
                             if select == '1':
                                 console.print("Increase task status was done successfully.", style="green")
+                                logger.info(f"Increase task status was done successfully")
+
                                 passing()
                             elif select == '2':
                                 console.print("Reduce task status was done successfully.", style="green")
+                                logger.info(f"Reduce task status was done successfully")
+
                                 passing()
 
                             with open("projects.json", "w") as f:
@@ -793,9 +827,12 @@ def Change_task_info(username):
                                             break
                             if select == '1':
                                 console.print("Increase task priority was done successfully.", style="green")
+                                logger.info(f"Increase task priority was done successfully")
                                 passing()
                             elif select == '2':
                                 console.print("Reduce task priority was done successfully.", style="green")
+                                logger.info(f"Reduce task priority was done successfully")
+
                                 passing()
 
                             with open("projects.json", "w") as f:
@@ -828,7 +865,7 @@ def Change_task_info(username):
 
 def show_task_tables(username):
     info_projects = json.load(open("projects.json", "r"))
-    flag = is_your_project(username)
+    flag = is_your_project(username=username)
     tasks_data = []
     backlog_tasks = []
     to_do_tasks = []
@@ -884,7 +921,7 @@ def show_task_tables(username):
 
 def task_comment(username):
     info_projects = json.load(open("projects.json", "r"))
-    flag = is_your_project(username)
+    flag = is_your_project(username=username)
     tasks = []
     for i in range(len(info_projects)):
         if title == info_projects[i].get("Title"):
@@ -912,6 +949,7 @@ def task_comment(username):
                 with open("projects.json", "w") as f:
                     json.dump(info_projects, f, indent=4)
                     console.print("Create comment was done successfully", style="green")
+                    logger.info(f"Create comment by {username} was done successfully")
                     passing()
             else:
                 console.print("Invalid task!", style="bold red")
@@ -936,6 +974,7 @@ def admin_login():
             if info_admin[i]["Password"] == admin_password:
                 valid_admin = True
     if valid_admin:
+        logger.info(f"Admin {admin_username} logged in")
         while True:
             console.print(f"\n    Welcom {admin_username}\n", style="green")
             console.print("1- Open Account", style="yellow")
@@ -960,6 +999,7 @@ def admin_login():
                         else:
                             info_users[i]["Is_active"] = True
                             console.print(f"{user_username} account opend successfully.", style="green")
+                            logger.info(f"{user_username} account opend successfully by {admin_username}")
                             passing()
                 if not is_user_exist:
                     console.print("User is not exist!", style="bold red")
@@ -978,18 +1018,21 @@ def admin_login():
                         else:
                             info_users[i]["Is_active"] = False
                             console.print(f"{user_username} account closed successfully.", style="green")
+                            logger.info(f"{user_username} account closed successfully by {admin_username}")
                             passing()
                 if not is_user_exist:
                     console.print("User is not exist!", style="bold red")
                 with open("users.json", "w") as f:
                     json.dump(info_users, f, indent=4)
             elif select == '0':
+                logger.info(f"Admin {admin_username} logged out")
                 break
             else:
                 console.print("Invalid choice! Please try again.", style="black")
                 passing()
     else:
         console.print("Invalid admin!", style="bold red")
+        logger.warning(f"Login failed for admin {admin_username}")
         passing()
 
 
@@ -1035,8 +1078,6 @@ def task_page():
 
 
 def menu():
-    task_pointer = None
-    model = Model()
     while True:
         create_main_menu()
         user = Account()
@@ -1052,14 +1093,15 @@ def menu():
             password = input()
             console.print("Enter your email..", style="blue")
             email = input()
-            user.register(username, password, email)
+            user.register(user_name=username, password=password, email=email)
 
         elif choice == '2':
             console.print("Enter your username..", style="blue")
             username = str(input())
             console.print("Enter your password..", style="blue")
             password = input()
-            user.login(username, password)
+            user.login(user_name=username, password=password)
+
             while user.logged_in:
                 account_page()
                 console.print("Enter your select...", style="bold yellow")
@@ -1079,10 +1121,8 @@ def menu():
                                     json.dump(info_users, f, indent=4)
 
                         project = CreateProject(title)
-                        for user in model.users:
-                            if user.user_name == username:
-                                user.add_project(project)
                         console.print("The construction of the project was completed successfully", style="bold green")
+                        logger.info(f"The construction of the {title} project was created")
 
                         while True:
                             console.print("Please enter the title of the task you want to define", style="yellow")
@@ -1090,12 +1130,13 @@ def menu():
                             console.print("Please enter the description of the task", style="yellow")
                             add_task_description = str(input())
                             task = CreateTask(add_task_title, add_task_description)
-                            project.add_task(task)
+                            project.add_task(task=task)
                             info_users = json.load(open("users.json", "r"))
                             leader_id = next(
                                 (item.get("ID") for item in info_users if username == item.get("Username")), None)
-                            project.save_information(leader_id)
+                            project.save_information(leader_id=leader_id)
                             console.print(f"{add_task_title} task defined in {title} project", style="green")
+                            logger.info(f"{add_task_title} task defined in {title} project", style="green")
                             console.print("\nIf you want to end the definition of the task, enter the 0 key",
                                           style="black")
                             console.print("If you want to define a new task, enter a any key (except 0)", style="black")
@@ -1113,13 +1154,13 @@ def menu():
                         os.system('cls' if os.name == 'nt' else 'clear')
 
                 elif choice == '2':
-                    add_user_project(username)
+                    add_user_project(username=username)
 
                 elif choice == '3':
-                    delete_user_project(username)
+                    delete_user_project(username=username)
 
                 elif choice == '4':
-                    delete_project(username)
+                    delete_project(username=username)
 
                 elif choice == '5':
                     info_users = json.load(open("users.json", "r"))
@@ -1153,25 +1194,25 @@ def menu():
                         choice = input()
 
                         if choice == '1':
-                            task_definition(username)
+                            task_definition(username=username)
 
                         elif choice == '2':
-                            task_delete(username)
+                            task_delete(username=username)
 
                         elif choice == '3':
-                            task_allocation(username)
+                            task_allocation(username=username)
 
                         elif choice == '4':
-                            delete_task_allocation(username)
+                            delete_task_allocation(username=username)
 
                         elif choice == '5':
-                            Change_task_info(username)
+                            Change_task_info(username=username)
 
                         elif choice == '6':
-                            show_task_tables(username)
+                            show_task_tables(username=username)
 
                         elif choice == '7':
-                            task_comment(username)
+                            task_comment(username=username)
                         elif choice == '0':
                             os.system('cls' if os.name == 'nt' else 'clear')
                             break
@@ -1180,6 +1221,7 @@ def menu():
                             passing()
                             continue
                 elif choice == '0':
+                    logger.info(f"User {username} logged out")
                     break
                 else:
                     console.print("Invalid choice.Please try again.", style="black")
